@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+
+<head>
+    <!-- <meta http-equiv="Content-Security-Policy" content="sandbox; default-src 'none'; script-src 'unsafe-eval'"> -->
+    <meta charset="utf-8">
+</head>
+
+<body>
+    <h2> Web Worker Test </h2>
+    <script type="text/javascript">
+        const worker = new Worker('worker.js');
+        let globalId = 0;
+
+        worker.onmessage = function (e) {
+            console.log(e.data);
+        };
+
+        worker.postMessage({
+            id: globalId++,
+            type: 'create',
+            name: 'fibonacci',
+            code: 'function(n){let a,b; for(a=0,b=1;n--;)b=a+(a=b);return a;}'
+        });
+        worker.postMessage({
+            id: globalId++,
+            type: 'create',
+            name: 'sleep',
+            code: 'function(ms){let n=+new Date;while(+new Date-n<ms){}}'
+        });
+        worker.postMessage({
+            id: globalId++,
+            type: 'create',
+            name: 'timer',
+            code: 'function(ms){setTimeout(()=> console.log("done"), ms)}'
+        });
+
+        worker.postMessage({
+            id: globalId++,
+            type: 'run',
+            name: 'fibonacci',
+            args: 15,
+        });
+        worker.postMessage({
+            id: globalId++,
+            type: 'run',
+            name: 'fibonacci2',
+            args: 10,
+        });
+
+        let asyncFibo = async function (n) {
+
+            let id = globalId++;
+            let p = new Promise((resolve, reject) => {
+                worker.onmessage = (e) => {
+                    resolve(e.data);
+                };
+                worker.onerror = (e) => {
+                    reject(e.message);
+                }
+                worker.postMessage({
+                    id: id,
+                    type: 'run',
+                    name: 'fibonacci',
+                    args: n,
+                });
+            });
+
+            let r = await p;
+            console.log('result asyncFibo')
+            console.log(r);
+
+            // alternate syntax
+            // p.then((e) => {
+            //     console.log(e);
+            //     return e.data
+            // })
+
+            console.log('end asyncFibo')
+            return r;
+        };
+
+        setTimeout(
+            () => {
+                console.log('call asyncFibo');
+                let z = asyncFibo(12);
+                console.log('after asyncFibo');
+                console.log(z);
+
+                // debug 
+                window.z = z;
+            }, 1000);
+
+
+    </script>
+</body>
+
+</html>
